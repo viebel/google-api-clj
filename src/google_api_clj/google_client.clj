@@ -43,9 +43,14 @@
 ;; ===========================================================================
 ;; constructor
 
-(defn new-google-client [config]
-  (map->GoogleClient (select-keys config [:credential-path :application-name])))
+#_(defn new-google-client [config]
+    (map->GoogleClient (select-keys config [:credential-path :application-name])))
 
+(defn create-google-client [credential-path]
+  {:http-transport (GoogleNetHttpTransport/newTrustedTransport)
+   :json-factory   (JacksonFactory/getDefaultInstance)
+   :credential     (make-timeout-fixer (make-credential credential-path)
+                                       (* 3 60000))})
 (comment
 
   (def credential-path "/Users/viebel/.config/gcloud/application_default_credentials.json")

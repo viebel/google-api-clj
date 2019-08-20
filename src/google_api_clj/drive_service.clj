@@ -99,12 +99,3 @@
     (component/using
      (map->DriveService (select-keys config []))
      [:google-client]))
-
-(comment
-  (require 'clojure.reflect)
-  (def service (make-service google-api-clj.google-client/google-client))
-  (def r (clojure.reflect/reflect service))
-  (map :name (:members r))
-  ;; => (revisions replies DEFAULT_ROOT_URL DEFAULT_BATCH_PATH teamdrives com.google.api.services.drive.Drive permissions channels files about com.google.api.services.drive.Drive comments DEFAULT_SERVICE_PATH changes DEFAULT_BASE_URL initialize)
-  (clojure.pprint/print-table (:members r))
-  )
