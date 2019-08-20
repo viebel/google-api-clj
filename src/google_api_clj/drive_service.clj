@@ -1,0 +1,110 @@
+(ns google-api-clj.drive-service
+  (:require
+   [clojure.string             :as string])
+  (:import
+   (com.google.api.services.drive Drive$Builder)
+   (com.google.api.services.drive.model Permission)))
+
+
+;; ===========================================================================
+;; utils
+
+(def default-page-size (int 1000))
+(def default-fields "nextPageToken, files(id, name, mimeType, createdTime, modifiedTime)")
+
+(defn make-service [{:keys [http-transport json-factory credential application-name]}]
+  (-> (Drive$Builder. http-transport json-factory credential)
+      (.setApplicationName application-name)
+      .build))
+
+(defn list-files-request [service mime-type page-token]
+  (cond-> (-> service .files .list (.setPageSize default-page-size) (.setFields default-fields))
+    mime-type  (.setQ (format "mimeType='%s'" mime-type))
+    page-token (.setPageToken page-token)))
+
+;; ===========================================================================
+;; API
+(def mime-types
+  {:pdf            "application/pdf"
+   :google-excel   "application/vnd.google-apps.spreadsheet"
+   :ms-excel       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+   :oo-spreadsheet "application/x-vnd.oasis.opendocument.spreadsheet"
+   :csv            "text/csv"
+   :html           "application/zip"})
+
+#_(defn list-files [{:keys [service]} kind]
+    (loop [files [] page-token nil]
+      (let [result     (execute (list-files-request service (get mime-types kind) page-token))
+            files      (into files
+                             (map (fn [file]
+                                    {:id       (.getId file)
+                                     :name     (.getName file)
+                                     :type     (.getMimeType file)
+                                     :created  (some-> (.getCreatedTime file) .toStringRfc3339)
+                                     :modified (some-> (.getModifiedTime file) .toStringRfc3339)})
+                                  (.getFiles result)))
+            page-token (.getNextPageToken result)]
+        (if (string/blank? page-token)
+          files
+          (recur files page-token)))))
+
+(defn delete-file [{:keys [service]} id]
+  (-> service .files (.delete id) .execute))
+
+#_(defn export-file [{:keys [service]} id format path]
+    (let [request (-> service .files (.export id (get mime-types format)))]
+      (execute-media-and-download-to request path)))
+
+(defn share-file [{:keys [service]} id user]
+  (-> service
+      .permissions
+      (.create id
+               (-> (Permission.)
+                   (.setType "user")
+                   (.setRole "writer")
+                   (.setEmailAddress user)))
+      .execute))
+
+(defn quotas [{:keys [service]}]
+  (let [about (-> service .about .get (.setFields "*") .execute)]
+    {:user  (let [user (.getUser about)]
+              {:id    (.getPermissionId user)
+               :email (.getEmailAddress user)
+               :name  (.getDisplayName user)})
+     :quota (let [quota (.getStorageQuota about)]
+              {:limit                (.getLimit quota)
+               :usage                (.getUsage quota)
+               :usage-in-drive       (.getUsageInDrive quota)
+               :usage-in-drive-trash (.getUsageInDriveTrash quota)})}))
+
+;; ===========================================================================
+;; component
+
+#_(defrecord DriveService [google-client]
+
+    component/Lifecycle
+
+    (start [component]
+      (log/info ";; starting DriveService")
+      (assoc component :service (make-service google-client)))
+
+    (stop [component]
+      (log/info ";; stopping DriveService")
+      (dissoc component :service)))
+
+;; ===========================================================================
+;; constructor
+
+#_(defn new-drive-service [config]
+    (component/using
+     (map->DriveService (select-keys config []))
+     [:google-client]))
+
+(comment
+  (require 'clojure.reflect)
+  (def service (make-service google-api-clj.google-client/google-client))
+  (def r (clojure.reflect/reflect service))
+  (map :name (:members r))
+  ;; => (revisions replies DEFAULT_ROOT_URL DEFAULT_BATCH_PATH teamdrives com.google.api.services.drive.Drive permissions channels files about com.google.api.services.drive.Drive comments DEFAULT_SERVICE_PATH changes DEFAULT_BASE_URL initialize)
+  (clojure.pprint/print-table (:members r))
+  )
