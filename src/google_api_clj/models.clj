@@ -11,6 +11,7 @@
                                             OverlayPosition
                                             EmbeddedObjectPosition
                                             GridRange
+                                            ValueRange
                                             ChartData
                                             ChartSourceRange
                                             PieChartSpec

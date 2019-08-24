@@ -173,6 +173,34 @@
 
 ;; ===========================================================================
 ;; Sheets requests
+(comment
+  (def service google-api-clj.playgound/sheets-service)
+
+  (def r (clojure.reflect/reflect (Request.)))
+  (sort (map :name (:members r)))
+
+  (-> service
+      .spreadsheets
+      (.batchUpdate "18jb1LPNDwCHosqrjkwXODJ4S4hRVDym8r8GxDbBJLuw" (make-batch-update [(make-update-cells (m/grid-coordinate {:grid-coordinate/sheet-id     952630484
+                                                                                                                              :grid-coordinate/row-index    0
+                                                                                                                              :grid-coordinate/column-index 0})
+                                                                                                          [(m/row-data {:row-data/values [{:cell-data/value 9999999}]})]
+                                                                                                          "*"
+                                                                                                          #_(vector-2d->ArrayList [[1 2] [3 4] [9 99]]))]))
+      execute)
+
+
+  )
+
+(defn vector-2d->ArrayList [v]
+  (java.util.ArrayList.
+   (map #(java.util.ArrayList. %) v)))
+
+(defn make-update-cells-no-fields [start rows]
+  (-> (Request.)
+      (.setUpdateCells (-> (UpdateCellsRequest.)
+                           (.setStart start)
+                           (.setRows rows)))))
 
 (defn make-update-cells [start rows fields]
   (-> (Request.)

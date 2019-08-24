@@ -3,7 +3,7 @@
    [clojure.string             :as string])
   (:import
    (com.google.api.services.drive Drive$Builder)
-   (com.google.api.services.drive.model Permission)))
+   (com.google.api.services.drive.model Permission Channel)))
 
 
 ;; ===========================================================================
@@ -50,6 +50,9 @@
 
 (defn delete-file [{:keys [service]} id]
   (-> service .files (.delete id) .execute))
+
+(defn get-file [{:keys [service]} id]
+  (-> service .files (.get id) .execute))
 
 #_(defn export-file [{:keys [service]} id format path]
     (let [request (-> service .files (.export id (get mime-types format)))]
