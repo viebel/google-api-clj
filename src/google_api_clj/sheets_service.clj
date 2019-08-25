@@ -344,8 +344,6 @@
                        url
                        (encode-url-title title))))
 
-;;; bunch of PT-specific code redacted, functions below left as example.
-
 (defn create-spreadsheet [{:keys [service]} properties sheets]
   (let [spreadsheet (-> service
                         .spreadsheets
@@ -369,28 +367,6 @@
       (.batchUpdate spreadsheet-id (make-batch-update [(make-add-sheet sheet-properties)]))
       execute))
 
-;; ===========================================================================
-;; component
-
-#_(defrecord SheetsService [google-client]
-
-    component/Lifecycle
-
-    (start [component]
-      #_(log/info ";; starting SheetsService")
-      (assoc component :service (make-service google-client)))
-
-    (stop [component]
-      #_(log/info ";; stopping SheetsService")
-      (dissoc component :service)))
-
-;; ===========================================================================
-;; constructor
-
-#_(defn new-sheets-service [config]
-    (component/using
-     (map->SheetsService (select-keys config []))
-     [:google-client]))
 
 (defn update-rows [{:keys [service]} id values & {:keys [value-input-option range]
                                                   :or {value-input-option "USER_ENTERED"
@@ -405,11 +381,3 @@
                     (vector-2d->ArrayList values))))
       (.setValueInputOption value-input-option)
       .execute))
-
-(comment
-  (auto-resize-rows {:service google-api-clj.drive-service/service}
-                    "10ZuwK3uTJ_dFm34LqoFJewtrwrpmqz2luyoGjBC1vm0"
-                    "aa"
-                    "A"
-                    "M")
-  )

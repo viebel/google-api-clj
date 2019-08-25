@@ -1,6 +1,4 @@
 (ns google-api-clj.drive-service
-  (:require
-   [clojure.string             :as string])
   (:import
    (com.google.api.services.drive Drive$Builder)
    (com.google.api.services.drive.model Permission Channel)))
@@ -80,25 +78,3 @@
                :usage-in-drive       (.getUsageInDrive quota)
                :usage-in-drive-trash (.getUsageInDriveTrash quota)})}))
 
-;; ===========================================================================
-;; component
-
-#_(defrecord DriveService [google-client]
-
-    component/Lifecycle
-
-    (start [component]
-      (log/info ";; starting DriveService")
-      (assoc component :service (make-service google-client)))
-
-    (stop [component]
-      (log/info ";; stopping DriveService")
-      (dissoc component :service)))
-
-;; ===========================================================================
-;; constructor
-
-#_(defn new-drive-service [config]
-    (component/using
-     (map->DriveService (select-keys config []))
-     [:google-client]))
