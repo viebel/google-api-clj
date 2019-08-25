@@ -1,4 +1,4 @@
-(ns google-api-clj.playgound
+(ns google-api-clj.playground
   (:require clojure.reflect
             [clojure.spec.test.alpha :as stest]
             [google-api-clj.drive-service :as drive]
