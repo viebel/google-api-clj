@@ -34,6 +34,10 @@
                                             TextRotation
                                             Padding)))
 
+
+(comment
+  (stest/instrument))
+
 ;; The idea here to use Clojure spec to document the types
 ;; Ideally, it would automatically conform the types, so there will be no need for manual casting to int. Will do it one day.
 

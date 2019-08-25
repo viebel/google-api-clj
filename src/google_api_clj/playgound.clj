@@ -1,5 +1,6 @@
 (ns google-api-clj.playgound
   (:require clojure.reflect
+            [clojure.spec.test.alpha :as stest]
             [google-api-clj.drive-service :as drive]
             [google-api-clj.google-client :refer [create-google-client]]
             [google-api-clj.sheets-service :as sheets])
@@ -9,6 +10,7 @@
 
 
 (comment
+  (stest/instrument)
 
   (def credential-path "/Users/viebel/.config/gcloud/application_default_credentials.json")
   (def google-client (create-google-client credential-path))
@@ -49,16 +51,9 @@
            (.setToken "target=myapp")))
       .execute)
 
-  (-> sheets-service
-      .spreadsheets
-      .values
-      (.update (:spreadsheet/id my-spreadheet)
-               "A2"
-               (-> (ValueRange.)
-                   (.setValues
-                    (vector-2d->ArrayList [[1e6 10] [9 8] [4 5]]))))
-      (.setValueInputOption  "USER_ENTERED")
-      .execute)
+  (sheets/add-sheet {:service sheets-service} (:spreadsheet/id my-spreadheet) {:sheet-properties/title "NewData"})
+  (sheets/update-rows {:service sheets-service} (:spreadsheet/id my-spreadheet)
+                      [[1e7 1e4] [9 8]] :range "NewData!A1")
 
   (def revisions (-> drive-service
                      .revisions

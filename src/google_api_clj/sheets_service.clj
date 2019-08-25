@@ -1,25 +1,9 @@
 (ns google-api-clj.sheets-service
-  (:require
-   [clojure.string             :as string]
-   [google-api-clj.net-utils      :refer [execute]]
-   [google-api-clj.models  :as m])
-  (:import
-   [com.google.api.services.sheets.v4.model
-    AddChartRequest
-    AddSheetRequest
-    BatchUpdateSpreadsheetRequest
-    DeleteSheetRequest
-    DeleteRangeRequest
-    EmbeddedChart
-    MergeCellsRequest
-    Request
-    UpdateCellsRequest
-    UpdateBordersRequest
-    UpdateSheetPropertiesRequest
-    AutoResizeDimensionsRequest
-    UpdateDimensionPropertiesRequest
-    RepeatCellRequest]
-   com.google.api.services.sheets.v4.Sheets$Builder))
+  (:require [clojure.string :as string]
+            [google-api-clj.models :as m]
+            [google-api-clj.net-utils :refer [execute]])
+  (:import [com.google.api.services.sheets.v4.model AddChartRequest AddSheetRequest AutoResizeDimensionsRequest BatchUpdateSpreadsheetRequest DeleteRangeRequest DeleteSheetRequest EmbeddedChart MergeCellsRequest RepeatCellRequest Request UpdateBordersRequest UpdateCellsRequest UpdateDimensionPropertiesRequest UpdateSheetPropertiesRequest ValueRange]
+           com.google.api.services.sheets.v4.Sheets$Builder))
 
 ;; Javadoc for the Google Sheets API used here:
 ;; https://developers.google.com/resources/api-libraries/documentation/sheets/v4/java/latest/
@@ -178,16 +162,17 @@
 
   (def r (clojure.reflect/reflect (Request.)))
   (sort (map :name (:members r)))
-
   (-> service
       .spreadsheets
       (.batchUpdate "18jb1LPNDwCHosqrjkwXODJ4S4hRVDym8r8GxDbBJLuw" (make-batch-update [(make-update-cells (m/grid-coordinate {:grid-coordinate/sheet-id     952630484
                                                                                                                               :grid-coordinate/row-index    0
                                                                                                                               :grid-coordinate/column-index 0})
-                                                                                                          [(m/row-data {:row-data/values [{:cell-data/value 9999999}]})]
+                                                                                                          [(m/row-data {:row-data/values [{:cell-data/value {:extended-value/number 11.4}}]})]
                                                                                                           "*"
                                                                                                           #_(vector-2d->ArrayList [[1 2] [3 4] [9 99]]))]))
       execute)
+
+  (add-sheet {:service service} "18jb1LPNDwCHosqrjkwXODJ4S4hRVDym8r8GxDbBJLuw" {:sheet-properties/title "Goo"})
 
 
   )
@@ -378,6 +363,12 @@
       execute
       .getSpreadsheetId))
 
+(defn add-sheet [{:keys [service]} spreadsheet-id sheet-properties]
+  (-> service
+      .spreadsheets
+      (.batchUpdate spreadsheet-id (make-batch-update [(make-add-sheet sheet-properties)]))
+      execute))
+
 ;; ===========================================================================
 ;; component
 
@@ -400,6 +391,20 @@
     (component/using
      (map->SheetsService (select-keys config []))
      [:google-client]))
+
+(defn update-rows [{:keys [service]} id values & {:keys [value-input-option range]
+                                                  :or {value-input-option "USER_ENTERED"
+                                                       range "A1"}}]
+  (-> service
+      .spreadsheets
+      .values
+      (.update id
+               range
+               (-> (ValueRange.)
+                   (.setValues
+                    (vector-2d->ArrayList values))))
+      (.setValueInputOption value-input-option)
+      .execute))
 
 (comment
   (auto-resize-rows {:service google-api-clj.drive-service/service}
