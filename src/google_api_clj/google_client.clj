@@ -1,5 +1,3 @@
-(ns google-api-clj.google-client)
-
 (ns google-api-clj.google-client
   (:require
    [clojure.java.io            :as io])
@@ -11,14 +9,14 @@
    (com.google.api.services.drive DriveScopes)
    (com.google.api.client.http HttpRequestInitializer)))
 
-;; ===========================================================================
-;; utils
+(def scope-map
+  {:spreadsheets SheetsScopes/SPREADSHEETS
+   :drive        DriveScopes/DRIVE})
 
-(defn make-credential [path]
+(defn make-credential [path scopes]
   (with-open [in (io/input-stream path)]
     (-> (GoogleCredential/fromStream in)
-        (.createScoped [SheetsScopes/SPREADSHEETS
-                        DriveScopes/DRIVE]))))
+        (.createScoped (map scope-map scopes)))))
 
 (defn make-timeout-fixer [initializer timeout]
   (proxy [HttpRequestInitializer] []
@@ -27,37 +25,9 @@
       (.setConnectTimeout http-request timeout)
       (.setReadTimeout http-request timeout))))
 
-;; ===========================================================================
-;; component
-
-#_(defn start [component]
-    (assoc component
-           :http-transport (GoogleNetHttpTransport/newTrustedTransport)
-           :json-factory   (JacksonFactory/getDefaultInstance)
-           :credential     (make-timeout-fixer (make-credential credential-path)
-                                               (* 3 60000))))
-
-#_(defn stop [component]
-    (dissoc component :http-transport :json-factory :credential))
-
-;; ===========================================================================
-;; constructor
-
-#_(defn new-google-client [config]
-    (map->GoogleClient (select-keys config [:credential-path :application-name])))
-
-(defn create-google-client [credential-path]
+(defn create-google-client [{:keys [credential-path scopes application-name]}]
   {:http-transport (GoogleNetHttpTransport/newTrustedTransport)
    :json-factory   (JacksonFactory/getDefaultInstance)
-   :credential     (make-timeout-fixer (make-credential credential-path)
+   :application-name application-name
+   :credential     (make-timeout-fixer (make-credential credential-path scopes)
                                        (* 3 60000))})
-(comment
-
-  (def credential-path "/Users/viebel/.config/gcloud/application_default_credentials.json")
-  (def google-client  {:http-transport (GoogleNetHttpTransport/newTrustedTransport)
-                       :json-factory   (JacksonFactory/getDefaultInstance)
-                       :application-name "Mr Hankey"
-                       :credential     (make-timeout-fixer (make-credential credential-path)
-                                                           (* 3 60000))})
-
-  )
