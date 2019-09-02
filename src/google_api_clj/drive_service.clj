@@ -1,7 +1,7 @@
 (ns google-api-clj.drive-service
   (:import
    (com.google.api.services.drive Drive$Builder)
-   (com.google.api.services.drive.model Permission Channel)))
+   (com.google.api.services.drive.model Permission Channel File)))
 
 
 ;; ===========================================================================
@@ -28,6 +28,7 @@
    :ms-excel       "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
    :oo-spreadsheet "application/x-vnd.oasis.opendocument.spreadsheet"
    :csv            "text/csv"
+   :folder         "application/vnd.google-apps.folder"
    :html           "application/zip"})
 
 #_(defn list-files [{:keys [service]} kind]
@@ -46,11 +47,34 @@
           files
           (recur files page-token)))))
 
+(defn create-folder [{:keys [service]} name]
+  (let [file-metadata (-> (File.)
+                          (.setName name)
+                          (.setMimeType (:folder mime-types)))]
+    (-> service .files (.create file-metadata) .execute)))
+
+(defn move-file [{:keys [service]} id dest-folder-id]
+  (let [parent (-> service
+                   .files
+                   (.get id)
+                   (.setFields "parents")
+                   .execute
+                   (get "parents")
+                   first)]
+    (-> service
+        .files
+        (.update id nil)
+        (.setAddParents dest-folder-id)
+        (.setRemoveParents parent)
+        .execute)))
+
 (defn delete-file [{:keys [service]} id]
   (-> service .files (.delete id) .execute))
 
 (defn get-file [{:keys [service]} id]
-  (-> service .files (.get id) .execute))
+  (-> service .files (.get id)
+      (.setFields "*")
+      .execute))
 
 #_(defn export-file [{:keys [service]} id format path]
     (let [request (-> service .files (.export id (get mime-types format)))]

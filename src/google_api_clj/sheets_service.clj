@@ -2,11 +2,12 @@
   (:require [clojure.string :as string]
             [google-api-clj.models :as m]
             [google-api-clj.net-utils :refer [execute]])
-  (:import [com.google.api.services.sheets.v4.model AddChartRequest AddSheetRequest AutoResizeDimensionsRequest BatchUpdateSpreadsheetRequest DeleteRangeRequest DeleteSheetRequest EmbeddedChart MergeCellsRequest RepeatCellRequest Request UpdateBordersRequest UpdateCellsRequest UpdateDimensionPropertiesRequest UpdateSheetPropertiesRequest ValueRange]
+  (:import [com.google.api.services.sheets.v4.model AddChartRequest AddSheetRequest AutoResizeDimensionsRequest BatchUpdateSpreadsheetRequest CreateDeveloperMetadataRequest DeleteRangeRequest DeleteSheetRequest DeveloperMetadata DeveloperMetadataLocation DimensionRange MergeCellsRequest RepeatCellRequest Request UpdateBordersRequest UpdateCellsRequest UpdateDimensionPropertiesRequest UpdateSheetPropertiesRequest ValueRange]
            com.google.api.services.sheets.v4.Sheets$Builder))
 
 ;; Javadoc for the Google Sheets API used here:
 ;; https://developers.google.com/resources/api-libraries/documentation/sheets/v4/java/latest/
+
 
 ;; ===========================================================================
 ;; constants
@@ -344,12 +345,20 @@
                        url
                        (encode-url-title title))))
 
+(defn sheet-url [spreadsheet-url sheet-id]
+  (str spreadsheet-url "#gid=" sheet-id))
+
+(defn sheet-id->range
+  ([sheet-id] (sheet-id->range sheet-id "A1"))
+  ([sheet-id range] (str sheet-id "!" range)))
+
 (defn create-spreadsheet [{:keys [service]} properties sheets]
   (let [spreadsheet (-> service
                         .spreadsheets
                         (.create (m/spreadsheet properties sheets))
                         execute)]
     {:spreadsheet/id         (.getSpreadsheetId spreadsheet)
+     :spreadsheet/url         (.getSpreadsheetUrl spreadsheet)
      :spreadsheet/properties (m/translate-spreadsheet-properties (.getProperties spreadsheet))
      :spreadsheet/sheets     (map #(m/translate-sheet-properties (.getProperties %)) (.getSheets spreadsheet))}))
 
@@ -361,12 +370,23 @@
       execute
       .getSpreadsheetId))
 
+
 (defn add-sheet [{:keys [service]} spreadsheet-id sheet-properties]
   (-> service
       .spreadsheets
       (.batchUpdate spreadsheet-id (make-batch-update [(make-add-sheet sheet-properties)]))
       execute))
 
+(defn rows->values [rows]
+  (->> (get rows "values")
+       (map vec )))
+
+(defn add-sheet-response->sheet-id [response]
+  (-> (.getReplies response)
+      (.get 0)
+      .getAddSheet
+      .getProperties
+      .getSheetId))
 
 (defn update-rows [{:keys [service]} id values & {:keys [value-input-option range]
                                                   :or {value-input-option "USER_ENTERED"
@@ -381,3 +401,53 @@
                     (vector-2d->ArrayList values))))
       (.setValueInputOption value-input-option)
       .execute))
+
+(defn append-rows [{:keys [service]} id values & {:keys [value-input-option range]
+                                                  :or {value-input-option "USER_ENTERED"
+                                                       range "A1"}}]
+  (-> service
+      .spreadsheets
+      .values
+      (.append id
+               range
+               (-> (ValueRange.)
+                   (.setValues
+                    (vector-2d->ArrayList values))))
+      (.setValueInputOption value-input-option)
+      .execute))
+
+(defn get-rows [{:keys [service]} id  & {:keys [range]
+                                         :or {range "A1"}}]
+  (-> service
+      .spreadsheets
+      .values
+      (.get id range)
+      .execute))
+
+(comment
+  (def service google-api-clj.playground/sheets-service)
+  (-> service
+      .spreadsheets
+      ( .getByDataFilter "1zC8gFo20z0WdldYEQ1KuC0jGFZjHZI14fauFmCQ4H4s" ))
+  (->
+   service
+   .spreadsheets
+   (.batchUpdate
+    "1zC8gFo20z0WdldYEQ1KuC0jGFZjHZI14fauFmCQ4H4s"
+    (make-batch-update
+     (map #(-> (Request.)
+               (.setCreateDeveloperMetadata
+                (-> (CreateDeveloperMetadataRequest.)
+                    (.setDeveloperMetadata (-> (DeveloperMetadata.)
+                                               (.setMetadataKey "aaaaabbbbb")
+                                               (.setMetadataValue "1234567890")
+                                               (.setVisibility "document")
+                                               (.setLocation (-> (DeveloperMetadataLocation.)
+                                                                 #_(.setSheetId (int 0))
+                                                                 (.setDimensionRange (-> (DimensionRange.)
+                                                                                         (.setSheetId (int 0))
+                                                                                         (.setDimension "ROWS")
+                                                                                         (.setStartIndex (int (inc %)))
+                                                                                         (.setEndIndex (int (inc (inc %))))))))))))) (range 1e3))))
+   .execute)
+  )
