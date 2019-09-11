@@ -2,7 +2,7 @@
   (:require [clojure.string :as string]
             [google-api-clj.models :as m]
             [google-api-clj.net-utils :refer [execute]])
-  (:import [com.google.api.services.sheets.v4.model AddChartRequest AddSheetRequest AutoResizeDimensionsRequest BatchUpdateSpreadsheetRequest CreateDeveloperMetadataRequest DeleteRangeRequest DeleteSheetRequest DeveloperMetadata DeveloperMetadataLocation DimensionRange MergeCellsRequest RepeatCellRequest Request UpdateBordersRequest UpdateCellsRequest UpdateDimensionPropertiesRequest UpdateSheetPropertiesRequest ValueRange]
+  (:import [com.google.api.services.sheets.v4.model AddChartRequest AddSheetRequest AutoResizeDimensionsRequest BatchUpdateSpreadsheetRequest CreateDeveloperMetadataRequest DeleteRangeRequest DeleteSheetRequest DeveloperMetadata DeveloperMetadataLocation DimensionRange MergeCellsRequest RepeatCellRequest Request UpdateBordersRequest UpdateCellsRequest UpdateDimensionPropertiesRequest UpdateSheetPropertiesRequest ValueRange SearchDeveloperMetadataRequest DataFilter DeveloperMetadataLookup]
            com.google.api.services.sheets.v4.Sheets$Builder))
 
 ;; Javadoc for the Google Sheets API used here:
@@ -161,8 +161,9 @@
 (comment
   (def service google-api-clj.playgound/sheets-service)
 
-  (def r (clojure.reflect/reflect (Request.)))
+  (def r (clojure.reflect/reflect (-> service .spreadsheets .developerMetadata)))
   (sort (map :name (:members r)))
+  r
   (-> service
       .spreadsheets
       (.batchUpdate "18jb1LPNDwCHosqrjkwXODJ4S4hRVDym8r8GxDbBJLuw" (make-batch-update [(make-update-cells (m/grid-coordinate {:grid-coordinate/sheet-id     952630484
@@ -377,7 +378,9 @@
       (.batchUpdate spreadsheet-id (make-batch-update [(make-add-sheet sheet-properties)]))
       execute))
 
-(defn rows->values [rows]
+(defn rows->values
+  "convert rows returned by the API into a 2D Clojure vector"
+  [rows]
   (->> (get rows "values")
        (map vec )))
 
@@ -426,9 +429,6 @@
 
 (comment
   (def service google-api-clj.playground/sheets-service)
-  (-> service
-      .spreadsheets
-      ( .getByDataFilter "1zC8gFo20z0WdldYEQ1KuC0jGFZjHZI14fauFmCQ4H4s" ))
   (->
    service
    .spreadsheets
@@ -438,16 +438,35 @@
      (map #(-> (Request.)
                (.setCreateDeveloperMetadata
                 (-> (CreateDeveloperMetadataRequest.)
-                    (.setDeveloperMetadata (-> (DeveloperMetadata.)
-                                               (.setMetadataKey "aaaaabbbbb")
-                                               (.setMetadataValue "1234567890")
-                                               (.setVisibility "document")
-                                               (.setLocation (-> (DeveloperMetadataLocation.)
-                                                                 #_(.setSheetId (int 0))
-                                                                 (.setDimensionRange (-> (DimensionRange.)
-                                                                                         (.setSheetId (int 0))
-                                                                                         (.setDimension "ROWS")
-                                                                                         (.setStartIndex (int (inc %)))
-                                                                                         (.setEndIndex (int (inc (inc %))))))))))))) (range 1e3))))
+                    (.setDeveloperMetadata
+                     (-> (DeveloperMetadata.)
+                         (.setMetadataKey "hankey")
+                         (.setMetadataValue (str %))
+                         (.setVisibility "document")
+                         (.setLocation
+                          (-> (DeveloperMetadataLocation.)
+                              #_(.setSheetId (int 0))
+                              (.setDimensionRange
+                               (-> (DimensionRange.)
+                                   (.setSheetId (int 0))
+                                   (.setDimension "ROWS")
+                                   (.setStartIndex (int (inc %)))
+                                   (.setEndIndex (int (inc (inc %)))))))))))))
+          (range 1e2))))
+   .execute)
+
+  (->
+   service
+   .spreadsheets
+   .developerMetadata
+   (.search
+    "1zC8gFo20z0WdldYEQ1KuC0jGFZjHZI14fauFmCQ4H4s"
+    (-> (SearchDeveloperMetadataRequest.)
+        (.setDataFilters [(-> (DataFilter.)
+                              (.setDeveloperMetadataLookup
+                               (-> (DeveloperMetadataLookup.)
+                                   (.setMetadataKey "hankey")
+                                   (.setMetadataValue "1"))) )]))
+    )
    .execute)
   )
