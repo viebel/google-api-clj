@@ -2,7 +2,7 @@
   (:require [clojure.string :as string]
             [google-api-clj.models :as m]
             [google-api-clj.net-utils :refer [execute]])
-  (:import [com.google.api.services.sheets.v4.model AddChartRequest AddSheetRequest AutoResizeDimensionsRequest BatchUpdateSpreadsheetRequest CreateDeveloperMetadataRequest DeleteRangeRequest DeleteSheetRequest DeveloperMetadata DeveloperMetadataLocation DimensionRange MergeCellsRequest RepeatCellRequest Request UpdateBordersRequest UpdateCellsRequest UpdateDimensionPropertiesRequest UpdateSheetPropertiesRequest ValueRange SearchDeveloperMetadataRequest DataFilter DeveloperMetadataLookup]
+  (:import [com.google.api.services.sheets.v4.model AddChartRequest AddSheetRequest AutoResizeDimensionsRequest BatchUpdateSpreadsheetRequest CreateDeveloperMetadataRequest DeleteRangeRequest DeleteSheetRequest DeveloperMetadata DeveloperMetadataLocation DimensionRange MergeCellsRequest RepeatCellRequest Request UpdateBordersRequest UpdateCellsRequest UpdateDimensionPropertiesRequest UpdateSheetPropertiesRequest ValueRange SearchDeveloperMetadataRequest DataFilter DeveloperMetadataLookup ClearValuesRequest]
            com.google.api.services.sheets.v4.Sheets$Builder))
 
 ;; Javadoc for the Google Sheets API used here:
@@ -174,10 +174,7 @@
                                                                                                           #_(vector-2d->ArrayList [[1 2] [3 4] [9 99]]))]))
       execute)
 
-  (add-sheet {:service service} "18jb1LPNDwCHosqrjkwXODJ4S4hRVDym8r8GxDbBJLuw" {:sheet-properties/title "Goo"})
-
-
-  )
+  (add-sheet {:service service} "18jb1LPNDwCHosqrjkwXODJ4S4hRVDym8r8GxDbBJLuw" {:sheet-properties/title "Goo"}))
 
 (defn vector-2d->ArrayList [v]
   (java.util.ArrayList.
@@ -363,14 +360,12 @@
      :spreadsheet/properties (m/translate-spreadsheet-properties (.getProperties spreadsheet))
      :spreadsheet/sheets     (map #(m/translate-sheet-properties (.getProperties %)) (.getSheets spreadsheet))}))
 
-
 (defn auto-resize-rows [{:keys [service]} id sheet-id start-row end-row]
   (-> service
       .spreadsheets
       (.batchUpdate id (make-batch-update [(make-auto-resize-dimensions sheet-id "ROWS" start-row end-row)]))
       execute
       .getSpreadsheetId))
-
 
 (defn add-sheet [{:keys [service]} spreadsheet-id sheet-properties]
   (-> service
@@ -382,7 +377,7 @@
   "convert rows returned by the API into a 2D Clojure vector"
   [rows]
   (->> (get rows "values")
-       (map vec )))
+       (map vec)))
 
 (defn add-sheet-response->sheet-id [response]
   (-> (.getReplies response)
@@ -427,8 +422,34 @@
       (.get id range)
       .execute))
 
+(defn clear-rows [{:keys [service]} id  range]
+  (-> service
+      .spreadsheets
+      .values
+      (.clear id range (ClearValuesRequest.))
+      .execute))
+
+(defn title-and-sheet-id [sheet]
+  (let [properties (.get sheet "properties")]
+    {:title (.get properties "title")
+     :sheet-id (.get properties "sheetId")}))
+
+(defn spreadsheet->sheet-properties [spreadsheet]
+  (map title-and-sheet-id
+       (into [] (.get spreadsheet "sheets"))) )
+
+(defn sheet-properties [service spreadsheet-id]
+  (-> service
+      .spreadsheets
+      (.get spreadsheet-id)
+      execute
+      spreadsheet->sheet-properties))
+
 (comment
   (def service google-api-clj.playground/sheets-service)
+  (sheet-properties service "1d5xZWCRDnbrKebQk2z-AjccpVbLKZohs3CJ_EgjdgeA")
+  
+  (clear-rows {:service service} "15xkaZ1Lh2ebR6SwMjDcaee_NNjkCvVlLI1UipU0s7rQ" "THE goal")
   (->
    service
    .spreadsheets
@@ -466,7 +487,5 @@
                               (.setDeveloperMetadataLookup
                                (-> (DeveloperMetadataLookup.)
                                    (.setMetadataKey "hankey")
-                                   (.setMetadataValue "1"))) )]))
-    )
-   .execute)
-  )
+                                   (.setMetadataValue "1"))))])))
+   .execute))

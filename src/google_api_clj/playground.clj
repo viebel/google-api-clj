@@ -95,7 +95,7 @@
   (def my-spreadheet (sheets/create-spreadsheet
                       {:service sheets-service}
                       {:spreadsheet-properties/title "Part of a shared folder - Auto shared"}
-                      []))
+                      [{:sheet-properties/title "entities"}]))
   (:spreadsheet/id my-spreadheet)
   ;; => "1Cy8FlY4VPrFiitrd-eu6492lphkK9Matp7tyGCtqGpM";; => "1k9-ZDAZSLBDKSLS_nUAvAz69L44WMdF1XzJJ6GNhABU"  ;; => "1Q4BOdey6UhM5Cw6O926vCO92Dkq-L8qwH-akXknIlc8"
   (:spreadsheet/url my-spreadheet)
