@@ -1,6 +1,7 @@
 (ns google-api-clj.drive-service
   (:import
    (com.google.api.services.drive Drive$Builder)
+   (com.google.api.client.googleapis.json GoogleJsonResponseException)
    (com.google.api.services.drive.model Permission Channel File)))
 
 
@@ -75,6 +76,17 @@
   (-> service .files (.get id)
       (.setFields "*")
       .execute))
+
+(defn file-exists? [{:keys [service]} id]
+  (try
+    (-> service .files (.get id)
+        (.setFields "id")
+        .execute)
+    true
+    (catch GoogleJsonResponseException e
+      (if (clojure.string/starts-with? (ex-message e) "404")
+        false
+        (throw e)))))
 
 #_(defn export-file [{:keys [service]} id format path]
     (let [request (-> service .files (.export id (get mime-types format)))]

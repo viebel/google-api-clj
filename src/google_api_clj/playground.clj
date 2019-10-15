@@ -5,19 +5,9 @@
             [google-api-clj.google-client :refer [create-google-client]]
             [google-api-clj.sheets-service :as sheets])
   (:import com.google.api.services.drive.model.Change
+           com.google.api.services.drive.Drive
            com.google.api.services.sheets.v4.model.ValueRange))
 
-
-
-(defn bar [a b {:keys [x y] :as args}]
-  (sc.api/spy)
-  (def a a)
-  (* a y (+ x b))
-  a)
-
-(defn foo [a]
-  (sc.api/spy)
-  (bar a 9 {:x 89 :y (inc 890)}))
 
 
 
@@ -86,11 +76,13 @@
   (stest/instrument)
 
   (def credential-path "/Users/viebel/.config/gcloud/application_default_credentials.json")
+  (def credential-path "/Users/viebel/Downloads/prod.json")
   (def google-client (create-google-client {:credential-path credential-path
                                             :scopes [:drive :spreadsheets]
-                                            :application-name "Playground"}))
+                                            :application-name ""}))
   (def sheets-service (sheets/make-service google-client))
   (def drive-service (drive/make-service google-client))
+  (sheets/get-rows {:service sheets-service} "1tE4oTbsqcqUK05W-rT_MU6amohFbRIiC2nP8lbOXJxM"  #_"1XY_rLhOD5A5iLsGBc5S2AviOx9AHpQjmaqOqalYV2Cs")
 
   (def my-spreadheet (sheets/create-spreadsheet
                       {:service sheets-service}
@@ -99,15 +91,30 @@
   (:spreadsheet/id my-spreadheet)
   ;; => "1Cy8FlY4VPrFiitrd-eu6492lphkK9Matp7tyGCtqGpM";; => "1k9-ZDAZSLBDKSLS_nUAvAz69L44WMdF1XzJJ6GNhABU"  ;; => "1Q4BOdey6UhM5Cw6O926vCO92Dkq-L8qwH-akXknIlc8"
   (:spreadsheet/url my-spreadheet)
-  ;; => "https://docs.google.com/spreadsheets/d/1HOh7B2FAiRgvFdsUJBE5EY_Sv0hEhIHlCP2J4NarsLE/edit"  ;; => "https://docs.google.com/spreadsheets/d/10vHR7reZ8ZTBSjeXIO-7oK3iIivw8KS4RmpLaJ4cNko/edit";; => "https://docs.google.com/spreadsheets/d/1QmSlR1Q9XN3sQv5CJxR8135kkoCaMlAoX313_riPHyY/edit"  ;; => "https://docs.google.com/spreadsheets/d/12xHwm0hrCGNSUo7XjgQGbh5z9gRGK0eEjHZJSUWT4rE/edit"
   (drive/share-file {:service drive-service} (:spreadsheet/id my-spreadheet) #_"stask312@gmail.com"  "viebel@gmail.com")
-  (def file (drive/get-file {:service drive-service} (:spreadsheet/id my-spreadheet)))
+  (drive/share-file {:service drive-service} "12TJveElvB6CHIgn9gyc_v5G0aOuMMAusLiBafOnNhiQ"   "yehonathan@cycognito.com")
+  ["1zL5rMtD4drT6o79W1GRQSdWgu9B5g9dr" "1nJlH0hLtURASjmiU3UNqZ6ONKPQSEaOm" "1_MK4ULHSBdwpNubBkYp4Hoq9uBhMwd1W"
+   "1nFKAy58F43wji_dfsovpxMxhX3U13HS1"
+   ""]
+  (drive/share-file {:service drive-service} "1Xe1LAdmBm9_GQP97GoCKlyShmJr_vqu3"
+                    "1Xe1LAdmBm9_GQP97GoCKlyShmJr_vqu3" "mr-hankey@mr-hankey.iam.gserviceaccount.com")
+  (-> drive-service
+      .children
+      (.list))
+  (def file (drive/get-file {:service drive-service} "1xf5gXGXAFebBfMdixLnZCEoRM9p9KfVcSzSRcQ5Dmy0"))
+  (drive/file-exists? {:service drive-service} "1xf5gXGXAFebBfMdixLnZCEoRM9p9KfVcSzSRcQ5Dmy0")
+  (drive/file-exists? {:service drive-service} "12TJveElvB6CHIgn9gyc_v5G0aOuMMAusLiBafOnNhiQ")
+  
+
+  (-> drive-service .files .list
+      .execute)
+  (drive/get-file {:service drive-service} "1XLEGTGNrFqSaW7xSCMalmswMftnBvueWX8BmdDK4xHI" #_"1XY_rLhOD5A5iLsGBc5S2AviOx9AHpQjmaqOqalYV2Cs")
   (def root (drive/get-file {:service drive-service} "root"))
   (def folder (drive/create-folder {:service drive-service} "Mr Hankey"))
   (drive/share-file {:service drive-service} (get folder "id")  "viebel@gmail.com")
   (get file "parents")
-  (def r (clojure.reflect/reflect (-> sheets-service .spreadsheets  )))
-  (map :name (:members r))
+  (def r (clojure.reflect/reflect (-> drive-service  )))
+  (sort (map :name (:members r)))
   (first (:members r))
 
   (drive/move-file {:service drive-service} (:spreadsheet/id my-spreadheet) (get folder "id"))
@@ -119,7 +126,12 @@
       (get "parents")
       first)
 
-
+  (def fff (.execute  (drive/list-files-request drive-service "application/vnd.google-apps.folder" nil)))
+  (doseq [folder  (->>  (get fff "files" )
+                        (into [])
+                        (map #(get % "id")))]
+    (drive/share-file {:service drive-service} folder "mr-hankey@mr-hankey.iam.gserviceaccount.com")
+    (println folder))
   (def rows (sheets/get-rows {:service sheets-service} "1HOh7B2FAiRgvFdsUJBE5EY_Sv0hEhIHlCP2J4NarsLE"
                              :range "schema"))
 
