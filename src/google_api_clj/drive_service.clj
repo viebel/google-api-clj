@@ -86,7 +86,7 @@
         .execute)
     true
     (catch GoogleJsonResponseException e
-      (if (clojure.string/starts-with? (.getMessage (ex-info e)) "404")
+      (if (clojure.string/starts-with? (.getMessage e) "404")
         false
         (throw e)))))
 
