@@ -86,7 +86,7 @@
         .execute)
     true
     (catch GoogleJsonResponseException e
-      (if (clojure.string/starts-with? (ex-message e) "404")
+      (if (clojure.string/starts-with? (.getMessage (ex-info e)) "404")
         false
         (throw e)))))
 
@@ -141,7 +141,7 @@
   (upload-in-folder-and-share {:service service} {:file-path "/tmp/aaa.csv"
                                                   :file-name "bb.csv"
                                                   :mime-type "text/csv"
-                                                  :destination-folder-id "1LU2RfkXyXFJDe5HgKTjxNfdYba2XuMAB"
+                                                  :destination-folder-id "0ADMVZl_UXLLJUk9PVA" #_"1QoaFlWca1z2boJYKXQz0duV1CKjGP44O"
                                                   :user "viebel@gmail.com"})
   (def file-metadata
     (->
@@ -153,7 +153,7 @@
                 (.setFields "*")
                 .execute
                 ))
-  (move-file {:service service} (get file "id") "1LU2RfkXyXFJDe5HgKTjxNfdYba2XuMAB")
+  (move-file {:service service} (get file "id") "155Ui0pWPeYohQPVOeWDWBK5DZbzjsQbP" )
 
   (file-exists? {:service service} "1SmGqJFZzhn1wRgZsbLG8NHyAvT-5ybhM")
   (share-file  {:service service} "1SmGqJFZzhn1wRgZsbLG8NHyAvT-5ybhM" "viebel@gmail.com")

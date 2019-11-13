@@ -1,4 +1,4 @@
-(defproject viebel/google-api-clj "0.1.9"
+(defproject viebel/google-api-clj "0.1.10"
   :description "Google API Clojure driver"
   :url "https://github.com/viebel/google-api-clj"
   :license {:name "EPL-2.0 OR GPL-2.0-or-later WITH Classpath-exception-2.0"
