@@ -11,69 +11,13 @@
 
 
 
-(defn headers-and-rows->maps
-  "Receives a tabular collection where the first elememt contains the headers
-  and the rest of the elements are the rows.
-  Returns a collection where each row is converted into a map whose keys are the headers.
-  In rows whose number of elements is lower than the number of headers, the missing headers won't appear in the corresponding map.
-  In rows whose number of elements is higher than the number of headers, the additional elements won't appear in the corresponding map.
 
-  See also: headers-and-maps->rows.
 
-  ~~~klipse
-  (headers-and-rows->maps  [\"name\" \"title\" \"total\"]
-                           [[\"David\" \"Architect\" 19]
-                            [\"Anna\" \"Dev\"]
-                            [\"Joe\" \"Analyst\" 88 321]])
-  ~~~
-  "
-  [headers rows]
-  (map (partial zipmap headers) rows))
-(defn vec->map
-  "Converts a 2d vec to a hash-map.
 
-  ~~~klipse
-   (vec->map [[:a 1] [:b 2]])
-  ~~~
-   "
-  [vec]
-  (into {} vec))
 
-(defn map-2d-vec
-  "Maps the values of a `2D` vector where each element of the vector is a key-value pair.
-  `f` is a `1-ary` function that receives the key.
 
-  ~~~klipse
-  (map-2d-vec inc [[:a 1] [:b 2]])
-  ~~~
-  "
-  [f m]
-  (map (fn[[k id]] [k (f id)]) m))
-
-(defn map-2d-vec-kv
-  "Maps the values of a `2D` vector where each element of the vector is a key-value pair.
-  `fk` is a `1-ary` function that receives the key.
-  `fv` is a `1-ary` function that receives the value.
-
-  ~~~klipse
-    (map-2d-vec-kv name inc [[:a 1] [:b 2]])
-  ~~~
-  "
-  [fk fv m]
-  (map (fn[[k id]] [(fk k) (fv id)]) m))
-
-(defn map-object
-  "Returns a map with the same keys as `m` and with the values transformed by `f`. `f` is a `1-ary` function that receives the key.
-
-  ~~~klipse
-  (map-object inc {:a 1 :b 2 :c 3})
-  ~~~
-  "
-  [f m]
-  (vec->map (map-2d-vec f m)))
 
 (comment
-  (stest/instrument)
 
   (def credential-path "/Users/viebel/.config/gcloud/application_default_credentials.json")
   (def credential-path "/Users/viebel/Downloads/prod.json")
@@ -82,8 +26,10 @@
                                             :application-name ""}))
   (def sheets-service (sheets/make-service google-client))
   (def drive-service (drive/make-service google-client))
-  (sheets/get-rows {:service sheets-service} "1tE4oTbsqcqUK05W-rT_MU6amohFbRIiC2nP8lbOXJxM"  #_"1XY_rLhOD5A5iLsGBc5S2AviOx9AHpQjmaqOqalYV2Cs")
+  (def rows
+    (sheets/get-rows {:service sheets-service} "1xf5gXGXAFebBfMdixLnZCEoRM9p9KfVcSzSRcQ5Dmy0" :range "dbs"))
 
+  (sheets/rows->values rows)
   (def my-spreadheet (sheets/create-spreadsheet
                       {:service sheets-service}
                       {:spreadsheet-properties/title "Part of a shared folder - Auto shared"}
