@@ -2,23 +2,23 @@
   (:require
    [clojure.java.io       :as io]))
 
-(def max-attempts 3)
-(def grace-period 300)
+(def max-attempts 5)
+(def grace-period 1000)
 
 (defn execute [request]
-  (loop [attempt 1]
+  ;; exponential backoff according to https://developers.google.com/drive/api/v3/handle-errors#exponential-backoff
+  (loop [attempt 0]
     (let [[status result] (try
                             [:ok (.execute request)]
                             (catch Throwable ex
-                              (if (<= attempt max-attempts)
+                              (if (< attempt max-attempts)
                                 [:retry ex]
                                 [:error ex])))]
       (condp = status
         :ok    result
         :error (throw result)
         :retry (do
-                 #_(log/warn "Failed to execute request" attempt result)
-                 (Thread/sleep (* attempt grace-period))
+                 (Thread/sleep (* (Math/pow 2 attempt) grace-period))
                  (recur (inc attempt)))))))
 
 (defn execute-media-and-download-to [request path]

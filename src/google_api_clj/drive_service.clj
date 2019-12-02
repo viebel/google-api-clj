@@ -1,5 +1,6 @@
 (ns google-api-clj.drive-service
-  (:require [clojure.java.io :as io])
+  (:require [clojure.java.io :as io]
+            [google-api-clj.net-utils :refer [execute]])
   (:import
    (com.google.api.client.http FileContent)
    (com.google.api.services.drive Drive$Builder)
@@ -54,14 +55,14 @@
   (let [file-metadata (-> (File.)
                           (.setName name)
                           (.setMimeType (:folder mime-types)))]
-    (-> service .files (.create file-metadata) .execute)))
+    (-> service .files (.create file-metadata) execute)))
 
 (defn move-file [{:keys [service]} id dest-folder-id]
   (let [parent (-> service
                    .files
                    (.get id)
                    (.setFields "parents")
-                   .execute
+                   execute
                    (get "parents")
                    first)]
     (-> service
@@ -69,21 +70,21 @@
         (.update id nil)
         (.setAddParents dest-folder-id)
         (.setRemoveParents parent)
-        .execute)))
+        execute)))
 
 (defn delete-file [{:keys [service]} id]
-  (-> service .files (.delete id) .execute))
+  (-> service .files (.delete id) execute))
 
 (defn get-file [{:keys [service]} id]
   (-> service .files (.get id)
       (.setFields "*")
-      .execute))
+      execute))
 
 (defn file-exists? [{:keys [service]} id]
   (try
     (-> service .files (.get id)
         (.setFields "id")
-        .execute)
+        execute)
     true
     (catch GoogleJsonResponseException e
       (if (clojure.string/starts-with? (.getMessage e) "404")
@@ -102,10 +103,10 @@
                    (.setType "user")
                    (.setRole "writer")
                    (.setEmailAddress user)))
-      .execute))
+      execute))
 
 (defn quotas [{:keys [service]}]
-  (let [about (-> service .about .get (.setFields "*") .execute)]
+  (let [about (-> service .about .get (.setFields "*") execute)]
     {:user  (let [user (.getUser about)]
               {:id    (.getPermissionId user)
                :email (.getEmailAddress user)
@@ -124,7 +125,7 @@
     (-> service .files
         (.create file-metadata content)
         (.setFields "id")
-        .execute)))
+        execute)))
 
 
 
@@ -151,7 +152,7 @@
   (def file (-> service .files
                 (.create file-metadata content)
                 (.setFields "*")
-                .execute
+                execute
                 ))
   (move-file {:service service} (get file "id") "155Ui0pWPeYohQPVOeWDWBK5DZbzjsQbP" )
 

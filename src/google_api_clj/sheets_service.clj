@@ -398,7 +398,7 @@
                    (.setValues
                     (vector-2d->ArrayList values))))
       (.setValueInputOption value-input-option)
-      .execute))
+      execute))
 
 (defn append-rows [{:keys [service]} id values & {:keys [value-input-option range]
                                                   :or {value-input-option "USER_ENTERED"
@@ -412,7 +412,7 @@
                    (.setValues
                     (vector-2d->ArrayList values))))
       (.setValueInputOption value-input-option)
-      .execute))
+      execute))
 
 (defn get-rows [{:keys [service]} id  & {:keys [range]
                                          :or {range "A1"}}]
@@ -420,14 +420,14 @@
       .spreadsheets
       .values
       (.get id range)
-      .execute))
+      execute))
 
 (defn clear-rows [{:keys [service]} id  range]
   (-> service
       .spreadsheets
       .values
       (.clear id range (ClearValuesRequest.))
-      .execute))
+      execute))
 
 (defn title-and-sheet-id [sheet]
   (let [properties (.get sheet "properties")]
@@ -474,7 +474,7 @@
                                    (.setStartIndex (int (inc %)))
                                    (.setEndIndex (int (inc (inc %)))))))))))))
           (range 1e2))))
-   .execute)
+   execute)
 
   (->
    service
@@ -488,4 +488,4 @@
                                (-> (DeveloperMetadataLookup.)
                                    (.setMetadataKey "hankey")
                                    (.setMetadataValue "1"))))])))
-   .execute))
+   execute))
