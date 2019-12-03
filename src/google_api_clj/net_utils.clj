@@ -2,7 +2,7 @@
   (:require
    [clojure.java.io       :as io]))
 
-(def max-attempts 5)
+(def max-attempts 4)
 (def grace-period 1000)
 
 (defn execute [request]
