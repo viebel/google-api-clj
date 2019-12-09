@@ -422,6 +422,19 @@
       (.get id range)
       execute))
 
+(defn get-multiple-sheets [{:keys [service]} id sheets-names]
+  (-> service
+      .spreadsheets
+      .values
+      (.batchGet id)
+      (.setRanges sheets-names)
+      execute))
+
+(defn get-multiple-sheets-values [{:keys [service]} id sheets-names]
+  (->> (get (get-multiple-sheets {:service service} id sheets-names) "valueRanges")
+       (map rows->values)
+       (zipmap sheets-names)))
+
 (defn clear-rows [{:keys [service]} id  range]
   (-> service
       .spreadsheets
@@ -447,6 +460,22 @@
 
 (comment
   (def service google-api-clj.playground/sheets-service)
+  (def ddd
+    (get-multiple-sheets-values {:service service} "aa1zC8gFo20z0WdldYEQ1KuC0jGFZjHZI14fauFmCQ4H4s" ["ips" "schema"]))
+  (->> (get ddd "valueRanges")
+       (map rows->values)
+       (zipmap ["ips" "schema"])
+       )
+  (def data
+    (-> service
+        .spreadsheets
+        .values
+        (.batchGet "1zC8gFo20z0WdldYEQ1KuC0jGFZjHZI14fauFmCQ4H4s" )
+        (.setRanges ["ips" "schema"])
+        execute))
+  (-> (get data "valueRanges")
+      (nth 1)
+      (get "values"))
   (sheet-properties service "1d5xZWCRDnbrKebQk2z-AjccpVbLKZohs3CJ_EgjdgeA")
   
   (clear-rows {:service service} "15xkaZ1Lh2ebR6SwMjDcaee_NNjkCvVlLI1UipU0s7rQ" "THE goal")

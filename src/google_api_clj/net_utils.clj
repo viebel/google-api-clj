@@ -2,7 +2,7 @@
   (:require
    [clojure.java.io       :as io]))
 
-(def max-attempts 4)
+(def max-attempts 4) ;; Overall the request should take less than 30 seconds
 (def grace-period 1000)
 
 (defn execute [request]
