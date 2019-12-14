@@ -1,7 +1,8 @@
 (ns google-api-clj.net-utils
   (:require
+   [taoensso.timbre :as timbre]
    [clojure.pprint :as pp]
-   [clojure.java.io       :as io]))
+   [clojure.java.io :as io]))
 
 (def max-attempts 4) ;; Overall the request should take less than 30 seconds
 (def grace-period 1000)
@@ -10,7 +11,7 @@
   ;; exponential backoff according to https://developers.google.com/drive/api/v3/handle-errors#exponential-backoff
   (loop [attempt 0]
     (let [[status result] (try
-                            (println (str "Google API - attempt " (inc attempt) "/" max-attempts ". request: ") request (with-out-str (pp/pprint request)))
+                            (timbre/info (str "Google API - attempt " (inc attempt) "/" max-attempts ". request: ") request (with-out-str (pp/pprint request)))
                             [:ok (.execute request)]
                             (catch Throwable ex
                               (if (< attempt max-attempts)
