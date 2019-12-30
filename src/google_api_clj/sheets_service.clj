@@ -2,7 +2,7 @@
   (:require [clojure.string :as string]
             [google-api-clj.models :as m]
             [google-api-clj.net-utils :refer [execute]])
-  (:import [com.google.api.services.sheets.v4.model AddChartRequest AddSheetRequest AutoResizeDimensionsRequest BatchUpdateSpreadsheetRequest CreateDeveloperMetadataRequest DeleteRangeRequest DeleteSheetRequest DeveloperMetadata DeveloperMetadataLocation DimensionRange MergeCellsRequest RepeatCellRequest Request UpdateBordersRequest UpdateCellsRequest UpdateDimensionPropertiesRequest UpdateSheetPropertiesRequest ValueRange SearchDeveloperMetadataRequest DataFilter DeveloperMetadataLookup ClearValuesRequest]
+  (:import [com.google.api.services.sheets.v4.model AddChartRequest AddSheetRequest AutoResizeDimensionsRequest BatchUpdateSpreadsheetRequest CreateDeveloperMetadataRequest DeleteRangeRequest DeleteSheetRequest DeveloperMetadata DeveloperMetadataLocation DimensionRange MergeCellsRequest RepeatCellRequest Request GridCoordinate UpdateBordersRequest AppendCellsRequest UpdateCellsRequest UpdateDimensionPropertiesRequest UpdateSheetPropertiesRequest ValueRange SearchDeveloperMetadataRequest DataFilter DeveloperMetadataLookup ClearValuesRequest]
            com.google.api.services.sheets.v4.Sheets$Builder))
 
 ;; Javadoc for the Google Sheets API used here:
@@ -166,12 +166,18 @@
   r
   (-> service
       .spreadsheets
-      (.batchUpdate "18jb1LPNDwCHosqrjkwXODJ4S4hRVDym8r8GxDbBJLuw" (make-batch-update [(make-update-cells (m/grid-coordinate {:grid-coordinate/sheet-id     952630484
+      (.batchUpdate "1zC8gFo20z0WdldYEQ1KuC0jGFZjHZI14fauFmCQ4H4s" (make-batch-update [(make-update-cells (m/grid-coordinate {:grid-coordinate/sheet-id     1072744118
                                                                                                                               :grid-coordinate/row-index    0
                                                                                                                               :grid-coordinate/column-index 0})
-                                                                                                          [(m/row-data {:row-data/values [{:cell-data/value {:extended-value/number 11.4}}]})]
-                                                                                                          "*"
-                                                                                                          #_(vector-2d->ArrayList [[1 2] [3 4] [9 99]]))]))
+                                                                                                          [(m/row-data {:row-data/values [{:cell-data/value {:extended-value/string "aa"}}
+                                                                                                                                          {:cell-data/value {:extended-value/string "bb"}}]})]
+                                                                                                          "*")
+                                                                                       (make-update-cells (m/grid-coordinate {:grid-coordinate/sheet-id     1403329869
+                                                                                                                              :grid-coordinate/row-index    0
+                                                                                                                              :grid-coordinate/column-index 0})
+                                                                                                          [(m/row-data {:row-data/values [{:cell-data/value {:extended-value/string "zzzz"}}
+                                                                                                                                          {:cell-data/value {:extended-value/string "bb"}}]})]
+                                                                                                          "*")]))
       execute)
 
   (add-sheet {:service service} "18jb1LPNDwCHosqrjkwXODJ4S4hRVDym8r8GxDbBJLuw" {:sheet-properties/title "Goo"}))
@@ -190,6 +196,13 @@
   (-> (Request.)
       (.setUpdateCells (-> (UpdateCellsRequest.)
                            (.setStart start)
+                           (.setRows rows)
+                           (.setFields fields)))))
+
+(defn make-append-cells [sheet-id rows fields]
+  (-> (Request.)
+      (.setAppendCells (-> (AppendCellsRequest.)
+                           (.setSheetId sheet-id)
                            (.setRows rows)
                            (.setFields fields)))))
 
@@ -373,6 +386,12 @@
       (.batchUpdate spreadsheet-id (make-batch-update [(make-add-sheet sheet-properties)]))
       execute))
 
+(defn add-sheets [{:keys [service]} spreadsheet-id sheets-properties]
+  (-> service
+      .spreadsheets
+      (.batchUpdate spreadsheet-id (make-batch-update (map make-add-sheet sheets-properties)))
+      execute))
+
 (defn rows->values
   "convert rows returned by the API into a 2D Clojure vector"
   [rows]
@@ -398,6 +417,45 @@
                    (.setValues
                     (vector-2d->ArrayList values))))
       (.setValueInputOption value-input-option)
+      execute))
+
+(defn sheets-and-rows->update-requests [sheets-and-rows]
+  (map (fn [[sheet-id rows]]
+         (make-update-cells (m/grid-coordinate {:grid-coordinate/sheet-id     sheet-id
+                                                :grid-coordinate/row-index    0
+                                                :grid-coordinate/column-index 0})
+                            (map (fn [row]
+                                   (m/row-data {:row-data/values (map (fn [value] {:cell-data/value {:extended-value/string value}}) row)}))
+                                 rows)
+                            "*"))
+       sheets-and-rows))
+
+(defn sheets-and-rows->update-or-append-requests [sheets-and-rows]
+  (map (fn [[sheet-id request-type rows]]
+         (let [cells (map (fn [row]
+                            (m/row-data {:row-data/values (map (fn [value] {:cell-data/value {:extended-value/string value}}) row)}))
+                          rows)]
+           (if (= :append request-type)
+             (make-append-cells (int sheet-id)
+                                cells
+                                "*")
+             (make-update-cells (m/grid-coordinate {:grid-coordinate/sheet-id     sheet-id
+                                                    :grid-coordinate/row-index    0
+                                                    :grid-coordinate/column-index 0})
+                                cells
+                                "*"))))
+       sheets-and-rows))
+
+(defn update-rows-multiple-sheets [{:keys [service]} id sheets-and-rows]
+  (-> service
+      .spreadsheets
+      (.batchUpdate id (make-batch-update (sheets-and-rows->update-requests sheets-and-rows)))
+      execute))
+
+(defn update-or-append-rows-multiple-sheets [{:keys [service]} id sheets-and-rows]
+  (-> service
+      .spreadsheets
+      (.batchUpdate id (make-batch-update (sheets-and-rows->update-or-append-requests sheets-and-rows)))
       execute))
 
 (defn append-rows [{:keys [service]} id values & {:keys [value-input-option range]
@@ -461,60 +519,52 @@
 (comment
   (def service google-api-clj.playground/sheets-service)
   (def ddd
-    (get-multiple-sheets-values {:service service} "aa1zC8gFo20z0WdldYEQ1KuC0jGFZjHZI14fauFmCQ4H4s" ["ips" "schema"]))
+    (get-multiple-sheets-values {:service service} "1zC8gFo20z0WdldYEQ1KuC0jGFZjHZI14fauFmCQ4H4s" ["ips" "schema"]))
   (->> (get ddd "valueRanges")
        (map rows->values)
        (zipmap ["ips" "schema"])
        )
+  (update-rows-multiple-sheets {:service service} "1zC8gFo20z0WdldYEQ1KuC0jGFZjHZI14fauFmCQ4H4s"
+                               [[1072744118 [["cccooo" "ddd"]]]
+                                [1403329869 [["1239" "0.0"]]]])
+  (update-or-append-rows-multiple-sheets {:service service} "1zC8gFo20z0WdldYEQ1KuC0jGFZjHZI14fauFmCQ4H4s"
+                                         [[1072744118 :update [["koko" "erer"]]]
+                                          [1403329869 :append [["jaja" "0.0"]]]])
+  (sheets-and-rows->update-or-append-requests [[1072744118 :update [["cccooo" "ddd"]]]
+                                               [1403329869 :update [["1239" "0.0"]]]])
+
   (def data
     (-> service
         .spreadsheets
-        .values
-        (.batchGet "1zC8gFo20z0WdldYEQ1KuC0jGFZjHZI14fauFmCQ4H4s" )
-        (.setRanges ["ips" "schema"])
+        (.batchUpdate "1zC8gFo20z0WdldYEQ1KuC0jGFZjHZI14fauFmCQ4H4s" (make-batch-update [(make-add-sheet {:sheet-properties/title "bbb"})
+                                                                                         (make-add-sheet {:sheet-properties/title "ccc"})]))
         execute))
+  (def data
+    (add-sheets {:service service}
+                "1zC8gFo20z0WdldYEQ1KuC0jGFZjHZI14fauFmCQ4H4s"
+                [{:sheet-properties/title "joy"}
+                 {:sheet-properties/title "anger"}]))
+
+  (type (int 1072744118))
+  (-> service
+      .spreadsheets
+      (.batchUpdate "1zC8gFo20z0WdldYEQ1KuC0jGFZjHZI14fauFmCQ4H4s" (make-batch-update [ (make-append-cells
+                                                                                         (int 1072744118)
+                                                                                         (map (fn [row]
+                                                                                                (m/row-data {:row-data/values (map (fn [value] {:cell-data/value {:extended-value/string value}}) row)}))
+                                                                                              [["aaa" "eeeejojo"]])
+                                                                                         "*")]))
+      execute)
+  (make-update-cells-no-fields (-> (GridCoordinate.)
+                                   (.set "sheetName" "aaa")
+                                   #_(.setRowIndex 0)
+                                   #_(.setColumnIndex 0)) [["aaa" "bbb"]])
   (-> (get data "valueRanges")
       (nth 1)
       (get "values"))
   (sheet-properties service "1d5xZWCRDnbrKebQk2z-AjccpVbLKZohs3CJ_EgjdgeA")
   
   (clear-rows {:service service} "15xkaZ1Lh2ebR6SwMjDcaee_NNjkCvVlLI1UipU0s7rQ" "THE goal")
-  (->
-   service
-   .spreadsheets
-   (.batchUpdate
-    "1zC8gFo20z0WdldYEQ1KuC0jGFZjHZI14fauFmCQ4H4s"
-    (make-batch-update
-     (map #(-> (Request.)
-               (.setCreateDeveloperMetadata
-                (-> (CreateDeveloperMetadataRequest.)
-                    (.setDeveloperMetadata
-                     (-> (DeveloperMetadata.)
-                         (.setMetadataKey "hankey")
-                         (.setMetadataValue (str %))
-                         (.setVisibility "document")
-                         (.setLocation
-                          (-> (DeveloperMetadataLocation.)
-                              #_(.setSheetId (int 0))
-                              (.setDimensionRange
-                               (-> (DimensionRange.)
-                                   (.setSheetId (int 0))
-                                   (.setDimension "ROWS")
-                                   (.setStartIndex (int (inc %)))
-                                   (.setEndIndex (int (inc (inc %)))))))))))))
-          (range 1e2))))
-   execute)
 
-  (->
-   service
-   .spreadsheets
-   .developerMetadata
-   (.search
-    "1zC8gFo20z0WdldYEQ1KuC0jGFZjHZI14fauFmCQ4H4s"
-    (-> (SearchDeveloperMetadataRequest.)
-        (.setDataFilters [(-> (DataFilter.)
-                              (.setDeveloperMetadataLookup
-                               (-> (DeveloperMetadataLookup.)
-                                   (.setMetadataKey "hankey")
-                                   (.setMetadataValue "1"))))])))
-   execute))
+
+  )
